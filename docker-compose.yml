@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./:/project
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo_data:/data/db
+      - ./:/project
+
+  neo4j:
+    image: neo4j:latest
+    container_name: neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/12345678
+    ports:
+      - "7474:7474"  # HTTP interface
+      - "7687:7687"  # Bolt protocol
+    volumes:
+      - ./neo4j_data:/data
+      - ./:/project
+
+  orioledb:
+    image: orioledb/orioledb:latest-pg17
+    container_name: orioledb
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5433:5432"  # Assuming OrioleDB (a PostgreSQL extension) is run on a different host port
+    volumes:
+      - ./orioledb_data:/var/lib/postgresql/data
+      - ./:/project
