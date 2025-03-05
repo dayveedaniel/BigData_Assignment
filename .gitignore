@@ -1,1 +1,5 @@
 .venv/
+mongo_data/
+postgres_data/
+neo4j_data/
+orioledb_data/
