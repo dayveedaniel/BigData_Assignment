@@ -73,7 +73,7 @@ docker exec -it neo4j bash
 cypher-shell -u neo4j -p 12345678 -f /import/scripts/load_data_neo4j.cypher
 ```
 
-If you encounter a `Java heap space Exception`, increase the memory settings in the Neo4J configuration file (`neo4j_data/conf/neo4j.conf`) by adding the following parameters:
+If you encounter a `Java heap space Exception`, increase the memory settings in the Neo4J configuration file (`neo4j_data/conf/neo4j.conf`) if you mounted the volume as in the docker compose file or cd into `neo4j/conf/neo4j.conf` and use a command line editor to add the following parameters:
 ```bash
 server.memory.heap.initial_size=3g
 server.memory.heap.max_size=4g
@@ -83,7 +83,7 @@ db.memory.transaction.max=4g
 dbms.memory.transaction.total.max=4g
 ```
 
-For larger datasets, increase the heap max size to **10GB** to ensure the `load_data.cypher` script runs successfully.
+Increase the heap max size to **10GB** to ensure the `load_data.cypher` script runs successfully.
 
 Alternatively, you can run the Python script `load_data_neo4j.py` to load data in batches via the Neo4J Python driver.
 
@@ -91,5 +91,4 @@ Alternatively, you can run the Python script `load_data_neo4j.py` to load data i
 - Ensure that your `.gitignore` file includes the `/data` folder and other large files that should not be uploaded.
 - Follow the provided instructions carefully to avoid errors during data processing.
 
-If you have any issues or concerns, please contact the TA or refer to the project report for additional insights.
 
