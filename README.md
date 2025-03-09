@@ -20,27 +20,24 @@ This repository contains all the necessary files, scripts, and instructions to s
 
 ## Setup Instructions
 
-### Step 1: Create a New Repository
-Before proceeding with the tasks, create a new repository on GitHub and submit the repository link to Moodle. Add the TA (`firas-jolha`) as a contributor if your repository is private.
-
-### Step 2: Clone the Repository
+### Step 1: Clone the Repository
 ```bash
 git clone <repository-link>
 cd <repository-name>
 ```
 
-### Step 3: Docker Configuration
+### Step 2: Docker Configuration
 To set up all the necessary containers:
 ```bash
 docker-compose up
 ```
 This command pulls the latest images of (Postgres, MongoDB, Noe4j and OrioelDB) from Docker Hub, mounts the project directory into the required directories for each container, and sets environments and ports.
 
-### Step 4: Data Preparation
+### Step 3: Data Preparation
 1. Create a `/data` folder in the root directory.
 2. Load the required CSV files into the `/data` folder. This folder is added to `.gitignore` to prevent large files from being uploaded to GitHub.
 
-### Step 5: Data Loading
+### Step 4: Data Loading
 #### PostgreSQL
 Ensure you have a folder named `/project` in the root directory. This is automatically mounted to `/project` in the PostgreSQL container via the Dockerfile.
 
