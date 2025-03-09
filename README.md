@@ -6,10 +6,14 @@ This repository contains all the necessary files, scripts, and instructions to s
 ## Repository Structure
 ```
 /
+├── /cleaned_data            # procesed dataset
+├── /data                    # initial dataset 
+├── /db_models               # contains .hck.json file from hackolade
 ├── /scripts                 # All script files (SQL, MongoDB, Neo4J)
 ├── /screenshots             # Screenshots of results and processes
 ├── /output                  # Results of experiments
 ├── docker-compose.yml       # Docker setup file
+├── .gitignore
 ├── report.pdf               # Final project report
 └── README.md                # Project documentation
 ```
@@ -30,7 +34,7 @@ To set up all the necessary containers:
 ```bash
 docker-compose up
 ```
-This command pulls the latest images from Docker Hub, mounts the project directory into the required directories for each container, and sets environments and ports.
+This command pulls the latest images of (Postgres, MongoDB, Noe4j and OrioelDB) from Docker Hub, mounts the project directory into the required directories for each container, and sets environments and ports.
 
 ### Step 4: Data Preparation
 1. Create a `/data` folder in the root directory.
