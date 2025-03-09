@@ -1,4 +1,3 @@
-// ----- Schema Changes (run these separately) -----
 DROP CONSTRAINT user_id_unique IF EXISTS;
 DROP CONSTRAINT product_id_unique IF EXISTS;
 DROP CONSTRAINT campaign_type_id_unique IF EXISTS;

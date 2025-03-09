@@ -5,66 +5,138 @@ import json
 import matplotlib.pyplot as plt
 import pandas as pd
 from pymongo import MongoClient
+from neo4j import GraphDatabase
+
+
 
 path = os.getcwd()
 
-def plot_campaigns(df):
+
+def make_autopct(values):
     """
-    Plots a stacked bar chart for campaigns where the purchase rate is greater than 50%.
-    The chart shows the number of users who purchased vs. those who did not purchase.
+    Create a function for autopct that shows both percentage and count.
     """
-    # Calculate number of users who did not purchase
-    df["users_not_purchased"] = df["users_received"] - df["users_purchased"]
+    def my_autopct(pct):
+        total = sum(values)
+        count = int(round(pct*total/100.0))
+        return '{p:.1f}%\n({v:d})'.format(p=pct, v=count)
+    return my_autopct
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(df["campaign_id"], df["users_purchased"], label="Users Purchased", color="green")
-    ax.bar(df["campaign_id"], df["users_not_purchased"],
-           bottom=df["users_purchased"], label="Users Not Purchased", color="red")
+def plot_purchase_ratio(df):
+    """
+    Pie chart showing the overall ratio of users who made purchases due to campaigns versus those who didn't.
+    Aggregates over all campaigns.
+    """
+    total_received = df["users_received"].sum()
+    total_purchased = df["users_purchased"].sum()
+    not_purchased = total_received - total_purchased
 
-    # Annotate each bar with the purchase rate percentage
-    for idx, row in df.iterrows():
-        ax.text(row["campaign_id"], row["users_received"] + 1, f"{row['purchase_rate_percentage']:.1f}%",
-                ha="center", va="bottom", fontsize=10)
+    sizes = [total_purchased, not_purchased]
+    labels = ["Purchased", "Not Purchased"]
+    colors = ['#66b3ff', '#ff9999']
 
-    ax.set_xlabel("Campaign ID")
-    ax.set_ylabel("Number of Users")
-    ax.set_title("High-Performing Campaigns (Purchase Rate > 50%)")
-    ax.legend()
-    plt.tight_layout()
+    plt.figure(figsize=(8, 8))
+    plt.pie(sizes, labels=labels, autopct=make_autopct(sizes), colors=colors, startangle=140)
+    plt.title("Overall Purchase Ratio")
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
     plt.show()
 
+def plot_campaign_type_users(df):
+    """
+    Pie chart showing, for each campaign type, the total number of users reached.
+    """
+    campaign_group = df.groupby("campaign_type")["users_received"].sum()
+    labels = campaign_group.index.tolist()
+    sizes = campaign_group.values.tolist()
+    # Define a list of colors (extend or change as needed)
+    colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99', '#c2c2f0', '#ffb3e6'][:len(labels)]
+
+    plt.figure(figsize=(8, 8))
+    plt.pie(sizes, labels=labels, autopct=make_autopct(sizes), colors=colors, startangle=140)
+    plt.title("Users Reached by Campaign Type")
+    plt.axis('equal')
+    plt.show()
+
+def plot_message_channel_usage(df):
+    """
+    Pie chart showing usage frequency of each message channel based on the count of campaigns.
+    """
+    channel_group = df.groupby("channel")["campaign_id"].count()
+    labels = channel_group.index.tolist()
+    sizes = channel_group.values.tolist()
+    colors = ['#c2c2f0','#ffb3e6','#ff9999','#66b3ff', '#99ff99', '#ffcc99'][:len(labels)]
+
+    plt.figure(figsize=(8, 8))
+    plt.pie(sizes, labels=labels, autopct=make_autopct(sizes), colors=colors, startangle=140)
+    plt.title("Message Channel Usage (by Campaign Count)")
+    plt.axis('equal')
+    plt.show()
+
+def plot_message_channel_users(df):
+    """
+    Pie chart showing which message channel brought the most users.
+    For each channel, the total 'users_received' is summed.
+    """
+    channel_group = df.groupby("channel")["users_received"].sum()
+    labels = channel_group.index.tolist()
+    sizes = channel_group.values.tolist()
+    colors = ['#ffcc99','#99ff99','#66b3ff','#ff9999', '#c2c2f0', '#ffb3e6'][:len(labels)]
+
+    plt.figure(figsize=(8, 8))
+    plt.pie(sizes, labels=labels, autopct=make_autopct(sizes), colors=colors, startangle=140)
+    plt.title("Users Reached by Message Channel")
+    plt.axis('equal')
+    plt.show()
+
+
+
+
+def run_neo4j_analysis():
+    uri = "bolt://localhost:7687"
+    user = "neo4j"
+    password = "12345678" 
     
-def plot_campaign_type_aggregate(df):
-    """
-    Aggregates the data by campaign type and plots a bar chart showing the overall purchase rate
-    for each campaign type.
-    """
-    grouped = df.groupby("campaign_type").agg({
-        "users_received": "sum",
-        "users_purchased": "sum"
-    }).reset_index()
-    grouped["purchase_rate"] = (grouped["users_purchased"] / grouped["users_received"]) * 100
+    cypher_file_path = os.path.join(path, "scripts", "q1.cypher")
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.bar(grouped["campaign_type"], grouped["purchase_rate"], color="blue")
+    with open(cypher_file_path, "r") as file:
+        query = file.read()
 
-    # Annotate each bar with the purchase rate percentage
-    for idx, row in grouped.iterrows():
-        ax.text(row["campaign_type"], row["purchase_rate"] + 1, f"{row['purchase_rate']:.1f}%",
-                ha="center", va="bottom", fontsize=10)
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    records = []
+    
+    # Execute the query and collect results.
+    with driver.session() as session:
+        result = session.run(query)
+        for record in result:
+            records.append({
+                "campaign_id": record["campaign_id"],
+                "campaign_type": record["campaign_type"],
+                "channel": record["channel"],
+                "users_received": record["users_received"],
+                "users_purchased": record["users_purchased"],
+                "purchase_percentage": record["purchase_percentage"]
+            })
+    
+    driver.close()
+    
+    # Create a pandas DataFrame with the required column order.
+    df = pd.DataFrame(records, columns=[
+        "campaign_id", 
+        "campaign_type", 
+        "channel",
+        "users_received", 
+        "users_purchased", 
+        "purchase_percentage", 
+      
+    ])
 
-    ax.set_xlabel("Campaign Type")
-    ax.set_ylabel("Aggregate Purchase Rate (%)")
-    ax.set_title("Aggregate Purchase Rate by Campaign Type")
-    plt.tight_layout()
-    plt.show()
+    print(df.head())
+    
+    return df
+
 
 
 def run_postgres_analysis():
-    """
-    Connects to the PostgreSQL database, executes the SQL query (stored in scripts/q1.sql),
-    and returns the results as a pandas DataFrame.
-    """
     conn = psycopg2.connect(
         dbname="ecommerce",
         user="postgres",
@@ -73,24 +145,22 @@ def run_postgres_analysis():
         port="5432"
     )
     cur = conn.cursor()
-    
     sql_file = os.path.join(path, "scripts", "q1.sql")
     
+    # Read the SQL query from the file
     with open(sql_file, "r") as f:
         query = f.read()
     
     cur.execute(query)
     results = cur.fetchall()
-    
-    # Define column names corresponding to the SQL SELECT output:
-    columns = ["campaign_id", "campaign_type", "users_received", "users_purchased", "purchase_rate_percentage", "message_details"]
-    df = pd.DataFrame(results, columns=columns)
+    # Get column names from the cursor description
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
     
     cur.close()
     conn.close()
     
     return df
-
 
 
 def run_mongo_analysis():
@@ -110,11 +180,10 @@ def run_mongo_analysis():
         { "$group": {
             "_id": {
                 "campaign_id": "$campaign_info.campaign_id",
-                "campaign_type": "$campaign_info.campaign_type"
+                "campaign_type": "$campaign_info.campaign_type",
+                "channel": "$campaign_info.channel"
             },
-            # Collect distinct client_ids for users who received a message
             "users_received": { "$addToSet": "$client_id" },
-            # Collect distinct client_ids where purchased_at is not null
             "users_purchased": { 
                 "$addToSet": {
                     "$cond": [
@@ -124,59 +193,46 @@ def run_mongo_analysis():
                     ]
                 }
             },
-            # Aggregate message details
-            "message_details": { "$push": {
-                "message_id": "$message_id",
-                "platform": "$platform",
-                "stream": "$stream",
-                "sent_at": "$sent_at"
-            } }
         }},
         { "$project": {
             "campaign_id": "$_id.campaign_id",
             "campaign_type": "$_id.campaign_type",
+            "channel": "$_id.channel",
             "users_received": { "$size": "$users_received" },
             "users_purchased": { "$size": "$users_purchased" },
-            "purchase_rate_percentage": {
+            "purchase_percentage": {
                 "$cond": [
                     { "$gt": [ { "$size": "$users_received" }, 0 ] },
                     { "$round": [ { "$multiply": [ { "$divide": [ { "$size": "$users_purchased" }, { "$size": "$users_received" } ] }, 100 ] }, 2 ] },
                     0
                 ]
             },
-            "message_details": 1,
             "_id": 0
         }},
-        { "$sort": { "purchase_rate_percentage": -1 } }
+        { "$sort": { "purchase_percentage": -1 } }
     ]
     
     # Run the pipeline on the messages collection.
     results = list(db.messages.aggregate(pipeline))
-    total_campaigns = len(results)
-    campaigns_with_purchase = 0
-
-    print("Campaign Purchase Analysis (MongoDB):")
-    for doc in results:
-        print(f"Campaign ID: {doc.get('campaign_id')}, Campaign Type: {doc.get('campaign_type')}, Users Received: {doc.get('users_received')}, Users Purchased: {doc.get('users_purchased')}, Purchase Rate: {doc.get('purchase_rate_percentage'):.2f}%")
-        print("Purchase Details:")
-        print(json.dumps(doc.get("message_details", []), indent=2, default=str))
-        print("-" * 50)
     
+    # Create DataFrame with the specified columns.
+    df = pd.DataFrame(results, columns=["campaign_id", "campaign_type", "channel", "users_received", "users_purchased", "purchase_percentage"])
     
-    # Return the results as a pandas DataFrame with the same format as the PostgreSQL query.
-    df = pd.DataFrame(results, columns=["campaign_id", "campaign_type", "users_received", "users_purchased", "purchase_rate_percentage", "message_details"])
     return df
 
-    
+
 
 if __name__ == "__main__":
-    df = run_mongo_analysis()
-    # df = run_postgres_analysis()
+    # df = run_mongo_analysis()
+    # df = run_neo4j_analysis()
+    df = run_postgres_analysis()
     
     total_campaigns = len(df)
+    print(df.head())
     
     print(f"Total campaigns returned: {total_campaigns}")
     
-    # Plot the charts
-    plot_campaigns(df)
-    plot_campaign_type_aggregate(df)
+    plot_purchase_ratio(df)
+    plot_campaign_type_users(df)
+    plot_message_channel_usage(df)
+    plot_message_channel_users(df)

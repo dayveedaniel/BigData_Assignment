@@ -5,8 +5,7 @@ from neo4j import GraphDatabase
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "12345678"
-
-BATCH_SIZE = 100  # adjust the batch size as needed
+BATCH_SIZE = 1000  # adjust the batch size as needed
 
 # --- Functions for loading data for each CSV file in batches ---
 
@@ -34,7 +33,7 @@ def _load_users(tx, rows):
 
 def load_users(session):
     load_csv_in_batches("cleaned_data/Users.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_load_users, batch))
+                        lambda batch: session.execute_write(_load_users, batch))
     print("Users loaded.")
 
 def _load_categories(tx, rows):
@@ -47,7 +46,7 @@ def _load_categories(tx, rows):
 
 def load_categories(session):
     load_csv_in_batches("cleaned_data/Categories.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_load_categories, batch))
+                        lambda batch: session.execute_write(_load_categories, batch))
     print("Categories loaded.")
 
 def _load_products(tx, rows):
@@ -62,7 +61,7 @@ def _load_products(tx, rows):
 
 def load_products(session):
     load_csv_in_batches("cleaned_data/Products.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_load_products, batch))
+                        lambda batch: session.execute_write(_load_products, batch))
     print("Products loaded.")
 
 def _load_campaigns(tx, rows):
@@ -79,33 +78,31 @@ def _load_campaigns(tx, rows):
 
 def load_campaigns(session):
     load_csv_in_batches("cleaned_data/Campaigns.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_load_campaigns, batch))
+                        lambda batch: session.execute_write(_load_campaigns, batch))
     print("Campaigns loaded.")
 
 def _load_messages(tx, rows):
     query = """
     UNWIND $rows AS row
-    CREATE (m:Message {
-        message_id: row.message_id,
-        sent_at: CASE WHEN row.sent_at <> "" THEN datetime(replace(row.sent_at, ' ', 'T')) ELSE null END,
-        opened_first_time_at: CASE WHEN row.opened_first_time_at <> "" THEN datetime(replace(row.opened_first_time_at, ' ', 'T')) ELSE null END,
-        opened_last_time_at: CASE WHEN row.opened_last_time_at <> "" THEN datetime(replace(row.opened_last_time_at, ' ', 'T')) ELSE null END,
-        clicked_first_time_at: CASE WHEN row.clicked_first_time_at <> "" THEN datetime(replace(row.clicked_first_time_at, ' ', 'T')) ELSE null END,
-        clicked_last_time_at: CASE WHEN row.clicked_last_time_at <> "" THEN datetime(replace(row.clicked_last_time_at, ' ', 'T')) ELSE null END,
-        unsubscribed_at: CASE WHEN row.unsubscribed_at <> "" THEN datetime(replace(row.unsubscribed_at, ' ', 'T')) ELSE null END,
-        hard_bounced_at: CASE WHEN row.hard_bounced_at <> "" THEN datetime(replace(row.hard_bounced_at, ' ', 'T')) ELSE null END,
-        soft_bounced_at: CASE WHEN row.soft_bounced_at <> "" THEN datetime(replace(row.soft_bounced_at, ' ', 'T')) ELSE null END,
-        complained_at: CASE WHEN row.complained_at <> "" THEN datetime(replace(row.complained_at, ' ', 'T')) ELSE null END,
-        blocked_at: CASE WHEN row.blocked_at <> "" THEN datetime(replace(row.blocked_at, ' ', 'T')) ELSE null END,
-        purchased_at: CASE WHEN row.purchased_at <> "" THEN datetime(replace(row.purchased_at, ' ', 'T')) ELSE null END
-    })
+    MERGE (m:Message { message_id: row.message_id })
+      ON CREATE SET 
+          m.sent_at = CASE WHEN row.sent_at <> "" THEN datetime(replace(row.sent_at, ' ', 'T')) ELSE null END,
+          m.opened_first_time_at = CASE WHEN row.opened_first_time_at <> "" THEN datetime(replace(row.opened_first_time_at, ' ', 'T')) ELSE null END,
+          m.opened_last_time_at = CASE WHEN row.opened_last_time_at <> "" THEN datetime(replace(row.opened_last_time_at, ' ', 'T')) ELSE null END,
+          m.clicked_first_time_at = CASE WHEN row.clicked_first_time_at <> "" THEN datetime(replace(row.clicked_first_time_at, ' ', 'T')) ELSE null END,
+          m.clicked_last_time_at = CASE WHEN row.clicked_last_time_at <> "" THEN datetime(replace(row.clicked_last_time_at, ' ', 'T')) ELSE null END,
+          m.unsubscribed_at = CASE WHEN row.unsubscribed_at <> "" THEN datetime(replace(row.unsubscribed_at, ' ', 'T')) ELSE null END,
+          m.hard_bounced_at = CASE WHEN row.hard_bounced_at <> "" THEN datetime(replace(row.hard_bounced_at, ' ', 'T')) ELSE null END,
+          m.soft_bounced_at = CASE WHEN row.soft_bounced_at <> "" THEN datetime(replace(row.soft_bounced_at, ' ', 'T')) ELSE null END,
+          m.complained_at = CASE WHEN row.complained_at <> "" THEN datetime(replace(row.complained_at, ' ', 'T')) ELSE null END,
+          m.blocked_at = CASE WHEN row.blocked_at <> "" THEN datetime(replace(row.blocked_at, ' ', 'T')) ELSE null END,
+          m.purchased_at = CASE WHEN row.purchased_at <> "" THEN datetime(replace(row.purchased_at, ' ', 'T')) ELSE null END
     """
     tx.run(query, rows=rows)
 
 def load_messages(session):
-    # Use a smaller batch size if needed
-    load_csv_in_batches("cleaned_data/Messages.csv", 50,
-                        lambda batch: session.write_transaction(_load_messages, batch))
+    load_csv_in_batches("cleaned_data/Messages.csv", BATCH_SIZE,
+                        lambda batch: session.execute_write(_load_messages, batch))
     print("Messages loaded.")
 
 def _load_devices(tx, rows):
@@ -118,7 +115,7 @@ def _load_devices(tx, rows):
 
 def load_devices(session):
     load_csv_in_batches("cleaned_data/UserDevices.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_load_devices, batch))
+                        lambda batch: session.execute_write(_load_devices, batch))
     print("Devices loaded.")
 
 # --- Relationship Creation Functions ---
@@ -135,7 +132,7 @@ def _create_friendships(tx, rows):
 
 def load_friendships(session):
     load_csv_in_batches("cleaned_data/UserFriends.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_create_friendships, batch))
+                        lambda batch: session.execute_write(_create_friendships, batch))
     print("Friendship relationships created.")
 
 def _create_product_categories(tx, rows):
@@ -148,9 +145,8 @@ def _create_product_categories(tx, rows):
     tx.run(query, rows=rows)
 
 def load_product_categories(session):
-    # Reuse the Products CSV to create product-category relationships
     load_csv_in_batches("cleaned_data/Products.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_create_product_categories, batch))
+                        lambda batch: session.execute_write(_create_product_categories, batch))
     print("Product-Category relationships created.")
 
 def _add_campaign_bulk_attributes(tx, rows):
@@ -169,7 +165,7 @@ def _add_campaign_bulk_attributes(tx, rows):
 
 def load_campaign_bulk_attributes(session):
     load_csv_in_batches("cleaned_data/BulkCampaignAttributes.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_add_campaign_bulk_attributes, batch))
+                        lambda batch: session.execute_write(_add_campaign_bulk_attributes, batch))
     print("Campaign bulk attributes added.")
 
 def _add_campaign_subject_attributes(tx, rows):
@@ -188,7 +184,7 @@ def _add_campaign_subject_attributes(tx, rows):
 
 def load_campaign_subject_attributes(session):
     load_csv_in_batches("cleaned_data/CampaignSubjectAttributes.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_add_campaign_subject_attributes, batch))
+                        lambda batch: session.execute_write(_add_campaign_subject_attributes, batch))
     print("Campaign subject attributes added.")
 
 def _create_campaign_messages(tx, rows):
@@ -202,7 +198,7 @@ def _create_campaign_messages(tx, rows):
 
 def load_campaign_messages(session):
     load_csv_in_batches("cleaned_data/Messages.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_create_campaign_messages, batch))
+                        lambda batch: session.execute_write(_create_campaign_messages, batch))
     print("Campaign-Message relationships created.")
 
 def _create_user_devices(tx, rows):
@@ -216,7 +212,7 @@ def _create_user_devices(tx, rows):
 
 def load_user_devices(session):
     load_csv_in_batches("cleaned_data/UserDevices.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_create_user_devices, batch))
+                        lambda batch: session.execute_write(_create_user_devices, batch))
     print("User-Device relationships created.")
 
 def _create_device_messages(tx, rows):
@@ -230,7 +226,7 @@ def _create_device_messages(tx, rows):
 
 def load_device_messages(session):
     load_csv_in_batches("cleaned_data/Messages.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_create_device_messages, batch))
+                        lambda batch: session.execute_write(_create_device_messages, batch))
     print("Device-Message relationships created.")
 
 def _create_user_messages(tx, rows):
@@ -245,7 +241,7 @@ def _create_user_messages(tx, rows):
 
 def load_user_messages(session):
     load_csv_in_batches("cleaned_data/Messages.csv", BATCH_SIZE,
-                        lambda batch: session.write_transaction(_create_user_messages, batch))
+                        lambda batch: session.execute_write(_create_user_messages, batch))
     print("User-Message relationships created.")
 
 def _create_events(tx, rows):
@@ -263,8 +259,8 @@ def _create_events(tx, rows):
     tx.run(query, rows=rows)
 
 def load_events(session):
-    load_csv_in_batches("cleaned_data/Events.csv", 50,
-                        lambda batch: session.write_transaction(_create_events, batch))
+    load_csv_in_batches("cleaned_data/Events.csv", BATCH_SIZE,
+                        lambda batch: session.execute_write(_create_events, batch))
     print("Event relationships created.")
 
 # --- Main Loader Function ---
