@@ -223,8 +223,8 @@ def run_mongo_analysis():
 
 if __name__ == "__main__":
     # df = run_mongo_analysis()
-    df = run_neo4j_analysis()
-    # df = run_postgres_analysis()
+    # df = run_neo4j_analysis()
+    df = run_postgres_analysis()
     
     total_campaigns = len(df)
     print(df.head())

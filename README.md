@@ -16,6 +16,7 @@ This repository contains all the necessary files, scripts, and instructions to s
 ├── .gitignore
 ├── report.pdf               # Final project report
 └── README.md                # Project documentation
+└── requirements.txt         # required python packages for this project
 ```
 
 ## Setup Instructions
@@ -26,18 +27,23 @@ git clone <repository-link>
 cd <repository-name>
 ```
 
-### Step 2: Docker Configuration
+### Step 2: Create a virtual python environment and install required python packages
+```bash
+pip install -r requirements.txt
+```
+
+### Step 3: Docker Configuration
 To set up all the necessary containers:
 ```bash
 docker-compose up
 ```
 This command pulls the latest images of (Postgres, MongoDB, Noe4j and OrioelDB) from Docker Hub, mounts the project directory into the required directories for each container, and sets environments and ports.
 
-### Step 3: Data Preparation
+### Step 4: Data Preparation
 1. Create a `/data` folder in the root directory.
 2. Load the required CSV files into the `/data` folder. This folder is added to `.gitignore` to prevent large files from being uploaded to GitHub.
 
-### Step 4: Data Loading
+### Step 5: Data Loading
 #### PostgreSQL
 Ensure you have a folder named `/project` in the root directory. This is automatically mounted to `/project` in the PostgreSQL container via the Dockerfile.
 
