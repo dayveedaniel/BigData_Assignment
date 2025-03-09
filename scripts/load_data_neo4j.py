@@ -5,7 +5,7 @@ from neo4j import GraphDatabase
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "12345678"
-BATCH_SIZE = 1000  # adjust the batch size as needed
+BATCH_SIZE = 5000  # adjust the batch size as needed
 
 # --- Functions for loading data for each CSV file in batches ---
 
