@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 import psycopg2
 import os
-import json
+import time
 import matplotlib.pyplot as plt
 import pandas as pd
 from pymongo import MongoClient
 from neo4j import GraphDatabase
 
 
-
 path = os.getcwd()
 
+BENCHMARK_COUNT = 5
+bench_results = {
+    "postgres": [],
+    "mongodb": [],
+    "neo4j": [],
+    "orioledb": []
+}
 
 def make_autopct(values):
     """
@@ -91,7 +97,7 @@ def plot_message_channel_users(df):
 
 
 
-def run_neo4j_analysis():
+def neo4j_q1(with_benchmak:bool = False):
     uri = "bolt://localhost:7687"
     user = "neo4j"
     password = "12345678" 
@@ -129,14 +135,48 @@ def run_neo4j_analysis():
         "purchase_percentage", 
       
     ])
-
     print(df.head())
-    
     return df
 
 
 
-def run_postgres_analysis():
+def orioeldb_q1(with_benchmak:bool = False):
+    conn = psycopg2.connect(
+        dbname="ecommerce",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5433"
+    )
+    cur = conn.cursor()
+    sql_file = os.path.join(path, "scripts", "q1.sql")
+    
+    # Read the SQL query from the file
+    with open(sql_file, "r") as f:
+        query = f.read()
+    
+    if (with_benchmak):
+        for i in range(BENCHMARK_COUNT):
+            start = time.perf_counter()
+            cur.execute(query)
+            end = time.perf_counter()
+            bench_results["orioledb"].append(end - start)
+            print(f'Runtime {i+1} orioledb {end - start}')
+    else:
+        cur.execute(query)
+    
+    results = cur.fetchall()
+    # Get column names from the cursor description
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
+    
+    cur.close()
+    conn.close()
+    
+    return df
+
+
+def postgres_q1(with_benchmak:bool = False):
     conn = psycopg2.connect(
         dbname="ecommerce",
         user="postgres",
@@ -150,8 +190,16 @@ def run_postgres_analysis():
     # Read the SQL query from the file
     with open(sql_file, "r") as f:
         query = f.read()
-    
-    cur.execute(query)
+
+    if (with_benchmak):
+        for i in range(BENCHMARK_COUNT):
+            start = time.perf_counter()
+            cur.execute(query)
+            end = time.perf_counter()
+            bench_results["postgres"].append(end - start)
+            print(f'Runtime {i+1} postgres {end - start}')
+    else:
+        cur.execute(query)
     results = cur.fetchall()
     # Get column names from the cursor description
     colnames = [desc[0] for desc in cur.description]
@@ -163,7 +211,7 @@ def run_postgres_analysis():
     return df
 
 
-def run_mongo_analysis():
+def mongodb_q1(with_benchmak:bool = False):
     client = MongoClient("mongodb://localhost:27017/")
     db = client["ecommerce"]
 
@@ -211,9 +259,19 @@ def run_mongo_analysis():
         }},
         { "$sort": { "purchase_percentage": -1 } }
     ]
+
+    if (with_benchmak):
+        for i in range(BENCHMARK_COUNT):
+            start = time.perf_counter()
+            results = db.messages.aggregate(pipeline)
+            end = time.perf_counter()
+            bench_results["mongodb"].append(end - start)
+            print(f'Runtime {i+1} mongodb {end - start}')
+    else:
+        results = db.messages.aggregate(pipeline)
     
     # Run the pipeline on the messages collection.
-    results = list(db.messages.aggregate(pipeline))
+    results = list(results)
     
     # Create DataFrame with the specified columns.
     df = pd.DataFrame(results, columns=["campaign_id", "campaign_type", "channel", "users_received", "users_purchased", "purchase_percentage"])
@@ -222,16 +280,25 @@ def run_mongo_analysis():
 
 
 if __name__ == "__main__":
-    # df = run_mongo_analysis()
-    # df = run_neo4j_analysis()
-    df = run_postgres_analysis()
+    df_mongo = mongodb_q1(with_benchmak=True)
+    # df_neo4j = neo4j_q1()
+    df_psql = postgres_q1(with_benchmak=True)
+    df_oriole = orioeldb_q1(with_benchmak=True)
     
-    total_campaigns = len(df)
-    print(df.head())
+    total_campaigns = len(df_psql)
+    print(df_psql.head())
     
     print(f"Total campaigns returned: {total_campaigns}")
     
-    plot_purchase_ratio(df)
-    plot_campaign_type_users(df)
-    plot_message_channel_usage(df)
-    plot_message_channel_users(df)
+    # plot_purchase_ratio(df)
+    # plot_campaign_type_users(df)
+    # plot_message_channel_usage(df)
+    # plot_message_channel_users(df)
+
+    if(bench_results):
+        results_dir = "results"
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+        df_bench = pd.DataFrame({k: v for k, v in bench_results.items() if v})   
+        csv_path = os.path.join(results_dir, "q1.csv")
+        df_bench.to_csv(csv_path, index=False)

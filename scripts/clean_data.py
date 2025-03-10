@@ -123,6 +123,13 @@ messages_table = df_messages[[
 ]]
 messages_table.to_csv(f"{path}/cleaned_data/Messages.csv", index=False)
 
+# Split the messages_table into 5 parts
+split_messages = np.array_split(messages_table, 5)
+
+# Write each part to a separate CSV file (Message_1.csv to Message_5.csv)
+for i, split_df in enumerate(split_messages, start=1):
+    split_df.to_csv(f"{path}/cleaned_data/Message_{i}.csv", index=False)
+
 # --- Process BulkCampaignAttributes table ---
 bulk_campaigns = campaigns_df[campaigns_df['campaign_type'] == 'bulk']
 bulk_attr_df = bulk_campaigns[['campaign_type_id', 'started_at', 'finished_at', 'total_count', 
