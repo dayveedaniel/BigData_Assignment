@@ -1,11 +1,21 @@
 import psycopg2
 import os
+import time
 import pandas as pd
 from pymongo import MongoClient
 
+
+BENCHMARK_COUNT = 5
+bench_results = {
+    "postgres": [],
+    "mongodb": [],
+    "neo4j": [],
+    "orioledb": []
+}
+
 path = os.getcwd()
 
-def run_postgres_q2():
+def run_postgres_q2(with_benchmak:bool = False):
     conn = psycopg2.connect(
         dbname="ecommerce",
         user="postgres",
@@ -18,7 +28,50 @@ def run_postgres_q2():
     
     with open(sql_file, "r") as f:
         query = f.read()
+
+    if (with_benchmak):
+        for i in range(BENCHMARK_COUNT):
+            start = time.perf_counter()
+            cur.execute(query)
+            end = time.perf_counter()
+            bench_results["postgres"].append(end - start)
+            print(f'Runtime {i+1} postgres {end - start}')
+    else:
+        cur.execute(query)
+    cur.execute(query)
+    results = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
     
+    cur.close()
+    conn.close()
+    
+    return df
+
+
+def run_oriole_q2(with_benchmak:bool = False):
+    conn = psycopg2.connect(
+        dbname="ecommerce",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5433"
+    )
+    cur = conn.cursor()
+    sql_file = os.path.join(path, "scripts", "q2.sql")
+    
+    with open(sql_file, "r") as f:
+        query = f.read()
+
+    if (with_benchmak):
+        for i in range(BENCHMARK_COUNT):
+            start = time.perf_counter()
+            cur.execute(query)
+            end = time.perf_counter()
+            bench_results["orioledb"].append(end - start)
+            print(f'Runtime {i+1} orioledb {end - start}')
+    else:
+        cur.execute(query)
     cur.execute(query)
     results = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
@@ -87,10 +140,7 @@ def run_postgres_q2():
 #     return df
 
 
-from pymongo import MongoClient
-import pandas as pd
-
-def run_mongo_q2():
+def run_mongo_q2(with_benchmak:bool = False):
     # Connect to MongoDB
     client = MongoClient("mongodb://localhost:27017/")
     db = client["ecommerce"]
@@ -151,7 +201,17 @@ def run_mongo_q2():
     ]
     
     # Run the aggregation pipeline and convert results to a pandas DataFrame
-    results = list(events_collection.aggregate(pipeline))
+    if (with_benchmak):
+        for i in range(BENCHMARK_COUNT):
+            start = time.perf_counter()
+            results = db.events_collection.aggregate(pipeline)
+            end = time.perf_counter()
+            bench_results["mongodb"].append(end - start)
+            print(f'Runtime {i+1} mongodb {end - start}')
+    else:
+        results = db.events_collection.aggregate(pipeline)
+
+    results = list(results)
     df = pd.DataFrame(results)
     client.close()
     return df
@@ -159,10 +219,12 @@ def run_mongo_q2():
 
 
 if __name__ == "__main__":
-    recommendations_df = run_mongo_q2()
-    print(recommendations_df.head())
+    df_oriole = run_oriole_q2(True)
+    df_mongo = run_mongo_q2(True)
+    df_postgres = run_postgres_q2(True)
+    print(df_postgres.head())
     print('Total rows')
-    print(len(recommendations_df))
+    print(len(df_postgres))
 
     # grouped_recommendations = recommendations_df.groupby('client_id').apply(
     #     lambda df: df[['product_id', 'category_id', 'category_code', 'event_count']].to_dict(orient='records')
@@ -171,3 +233,11 @@ if __name__ == "__main__":
     # for index, row in grouped_recommendations.head(10).iterrows():
     #     print(f"Client {row['client_id']}: Recommendations: {row['recommendations']}")
     #     print()
+
+    if(bench_results):
+        results_dir = "results"
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+        df_bench = pd.DataFrame({k: v for k, v in bench_results.items() if v})   
+        csv_path = os.path.join(results_dir, "q2.csv")
+        df_bench.to_csv(csv_path, index=False)

@@ -4,7 +4,7 @@ import numpy as np
 import json
 from datetime import datetime
 import gc
-# Get the current working directory
+
 path = os.getcwd()
 
 # Read source CSV files
@@ -15,7 +15,7 @@ df_messages = pd.read_csv(f"{path}/data/messages.csv", low_memory=False)
 df_friends = pd.read_csv(f"{path}/data/friends.csv", low_memory=False)
 
 # Function to extract user_id and device_id from client_id.
-# Assumes client_id = "151591562" + <9-digit user_id> + <device_id>
+#  client_id = "151591562" + <9-digit user_id> + <device_id>
 def extract_ids(client_id):
     prefix = "151591562"
     s = str(client_id)
