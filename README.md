@@ -15,7 +15,7 @@ This repository contains all the necessary files, scripts, and instructions to s
 ├── docker-compose.yml       # Docker setup file
 ├── .gitignore
 ├── report.pdf               # Final project report
-└── README.md                # Project documentation
+├──  README.md               # Project documentation
 └── requirements.txt         # required python packages for this project
 ```
 
@@ -90,8 +90,22 @@ Increase the heap max size to **10GB** to ensure the `load_data.cypher` script r
 
 Alternatively, you can run the Python script `load_data_neo4j.py` to load data in batches via the Neo4J Python driver.
 
+#### OrioleDB
+This is an extension to postgres to make it faster, it uses a different storage engine. Things to take not then using OrioleDB extension in postgres. OrioleDB tables support only ICU, C, and POSIX collations. So, make sure the cluster or database is set up with default collations that fall under those options, otherwise you have to write COLLATE for every "text" field of the table.
+Therefore when creating a database you should specify `LOCALE_PROVIDER` as so:
+```bash
+CREATE DATABASE test
+LOCALE_PROVIDER icu
+ICU_LOCALE "en-US"
+LOCALE "en_US.utf8"
+TEMPLATE template0;
+```
+
+
 ## Important Notes
 - Ensure that your `.gitignore` file includes the `/data` folder and other large files that should not be uploaded.
 - Follow the provided instructions carefully to avoid errors during data processing.
+- Neo4j database wasn't benchmarkes because after so many trials, I didn't have enough recources to upload data from huge csv files to the database even after splitting to smaller chunks because it requires a lot of RAM about (10GB).
+- From my results using OrioleDB extension on postgres didn't make the queries faster , but even significantly slowed down the query times(results in `Big_data_report.pdf`). Most likely it's due to an issue from my usage of this extension.
 
 
